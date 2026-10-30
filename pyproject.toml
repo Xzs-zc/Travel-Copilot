@@ -1,0 +1,43 @@
+[project]
+name = "travel-copilot-map-agent"
+version = "0.4.0"
+description = "Map-first travel planning agent with a stdio/HTTP MCP tool plane, live Amap, 12306 and official-site verification."
+requires-python = ">=3.11"
+dependencies = [
+    "aiosqlite>=0.21",
+    "alembic>=1.16,<2",
+    "asyncpg>=0.30,<1",
+    "chromadb>=1.0,<2",
+    "fastapi>=0.116",
+    "httpx>=0.28",
+    "langfuse>=4.16.0,<5",
+    "langgraph>=1.0,<2",
+    "langgraph-checkpoint-sqlite>=3.0,<4",
+    "mcp>=2.2.0,<3",
+    "openai>=1.109",
+    "pillow>=11.0",
+    "playwright>=1.55",
+    "pydantic-settings>=2.10",
+    "redis>=5.2,<7",
+    "sqlalchemy[asyncio]>=2.0.43",
+    "sse-starlette>=3.0",
+    "uvicorn[standard]>=0.35",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "pytest-asyncio>=1.1",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]

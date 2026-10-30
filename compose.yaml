@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: travel
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: travel
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: ${DOCKER_BUILD_HTTP_PROXY:-}
+        HTTPS_PROXY: ${DOCKER_BUILD_HTTPS_PROXY:-}
+        NO_PROXY: ${DOCKER_BUILD_NO_PROXY:-localhost,127.0.0.1,postgres,redis}
+    command: ["api"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      COOKIE_SECURE: "false"
+      DATABASE_URL: postgresql+asyncpg://travel:travel@postgres:5432/travel
+      DATABASE_AUTO_CREATE: "false"
+      REDIS_URL: redis://redis:6379/0
+      TRUST_PROXY_HEADERS: "false"
+    ports:
+      - "8765:8765"
+    volumes:
+      - travel-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8765/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: ${DOCKER_BUILD_HTTP_PROXY:-}
+        HTTPS_PROXY: ${DOCKER_BUILD_HTTPS_PROXY:-}
+        NO_PROXY: ${DOCKER_BUILD_NO_PROXY:-localhost,127.0.0.1,postgres,redis}
+    command: ["worker"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      COOKIE_SECURE: "false"
+      DATABASE_URL: postgresql+asyncpg://travel:travel@postgres:5432/travel
+      DATABASE_AUTO_CREATE: "false"
+      REDIS_URL: redis://redis:6379/0
+      TASK_CONSUMER_NAME: worker-compose
+    volumes:
+      - travel-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          .venv/bin/python -c
+          "import os,redis,sys; sys.exit(0 if redis.Redis.from_url(os.environ['REDIS_URL']).exists('travel:worker:heartbeat') else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  travel-data:

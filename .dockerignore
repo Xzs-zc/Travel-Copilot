@@ -1,0 +1,12 @@
+.venv
+.git
+.agents
+.env
+.pytest_cache
+data
+frontend/node_modules
+frontend/dist
+.DS_Store
+**/__pycache__
+**/*.pyc
+*.log
