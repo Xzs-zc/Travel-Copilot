@@ -219,7 +219,7 @@ def test_support_reply_prompt_accepts_datetime_facts():
         selected_skills,
     )
     assert "有的图片好模糊为什么" in prompt
-    assert "[Skill: troubleshooter@1]" in prompt
+    assert f"[Skill: troubleshooter@{selected_skills[0].version}]" in prompt
 
 
 def test_support_skills_load_hot_reload_and_route_injection(tmp_path):

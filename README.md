@@ -118,7 +118,7 @@ finalize / fail
 
 模型只负责受限决策和自然语言生成；路线、票价、余票、天气、来源和最终结构由确定性代码控制。
 
-## RAG
+## RAG 
 
 客服 RAG 默认使用：
 
@@ -131,6 +131,8 @@ Agent 路由过滤
 → DeepSeek 生成带引用回答
 ```
 
+
+
 ### 评测快照
 
 | 评测 | 结果 |
@@ -138,6 +140,7 @@ Agent 路由过滤
 | 100 条 RAG 回归集 | Recall@5 99.0%、Faithfulness 97.9、Citation 99.5、Relevance 96.1 |
 | 最终 50 条未见 Holdout 首次运行 | Recall@5 100%、Faithfulness 97.0、Citation 98.9、Relevance 94.8 |
 | Runtime 300 | 300/300，包含 35 条真实在线 E2E |
+| 客服盲测 v5 | Supervisor 路由 78/80，关键误路由 0，端到端 20/20 |
 
 评测报告默认生成到 `data/evaluations/`。
 
@@ -332,7 +335,7 @@ uv run python scripts/evaluate_runtime300.py \
   --base-url http://127.0.0.1:8765
 ```
 
-RAG 质量和 RSI：
+RAG 质量
 
 ```bash
 uv run python scripts/evaluate_rag_quality.py \
@@ -346,7 +349,6 @@ uv run python scripts/evaluate_rag_quality.py \
   --concurrency 5
 ```
 
-使用 `--no-rsi` 可运行关闭 RSI 的基线。
 
 ## 数据来源与边界
 
@@ -377,6 +379,7 @@ uv run python scripts/evaluate_rag_quality.py \
 - 账户密码使用 PBKDF2 哈希，登录使用 HttpOnly `SameSite=Lax` 会话 Cookie。
 - 客服只执行只读白名单工具，并按账户隔离会话。
 - API Key、Cookie、Token、内部 Prompt 和完整异常堆栈不会返回给前端。
+
 
 ## License
 
