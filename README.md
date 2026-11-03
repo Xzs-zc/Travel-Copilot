@@ -10,7 +10,6 @@
 - SSE 渐进式页面加载与后台任务
 - Supervisor + Skill + Hybrid RAG 客服
 - Langfuse 可观测性与可重复评测
-- 受规划轮次约束的 RAG 自改进闭环
 
 > 项目定位为个人作品与 Agent 工程实践，不是面向公网大规模用户的生产 SaaS。项目不提供购票、付款、酒店预订或旅行中的实时导航。
 
@@ -132,41 +131,15 @@ Agent 路由过滤
 → DeepSeek 生成带引用回答
 ```
 
-`backend/app/evaluation/rag_quality.py` 提供评测期 RAG 自改进闭环：
-
-```text
-问题
-→ 基于章节目录规划 1–2 个关键词查询
-→ 原查询和规划查询分别检索
-→ 覆盖式融合证据
-→ 生成带引用回答
-→ MiMo 以 Faithfulness / Citation / Relevance 评分
-→ 低于 90 或引用非法时进行受限修订
-→ 保留最优候选
-```
-
-硬上限：
-
-- 最多 2 个规划查询，总计 3 个查询
-- 最多 2 个修订轮次
-- 最多 3 个答案候选
-- 最多 3 次 Judge
-- 单案最多 180 秒
-- 无提升、达到轮次上限或超时立即停止
-
-该模块当前用于评测与研究验证，不默认进入线上客服请求路径。它不是模型权重更新，也不是 Agent 修改自身代码。
-
 ### 评测快照
 
 | 评测 | 结果 |
 |---|---|
-| 100 条 RAG 回归集 | Recall@5 99.0%、Faithfulness 97.9、Citation 99.5、Relevance 96.1；严格逐案通过 96/100 |
-| 最终 50 条未见 Holdout 首次运行 | Recall@5 100%、Faithfulness 97.0、Citation 98.9、Relevance 94.8；严格逐案通过 46/50 |
+| 100 条 RAG 回归集 | Recall@5 99.0%、Faithfulness 97.9、Citation 99.5、Relevance 96.1 |
+| 最终 50 条未见 Holdout 首次运行 | Recall@5 100%、Faithfulness 97.0、Citation 98.9、Relevance 94.8 |
 | Runtime 300 | 300/300，包含 35 条真实在线 E2E |
-| Travel Copilot v2 | 60 条冻结离线场景 × 3 轮 + 12 条真实在线冒烟 |
-| 客服盲测 v5 | Supervisor 路由 78/80，关键误路由 0，端到端 20/20 |
 
-评测报告默认生成到 `data/evaluations/`，该目录已被 `.gitignore` 排除。
+评测报告默认生成到 `data/evaluations/`。
 
 ## 技术栈
 
@@ -394,8 +367,6 @@ uv run python scripts/evaluate_rag_quality.py \
 ## 已知限制
 
 - 外部数据源可能限流、改版或短时不可用。
-- RSI 仍属于有界测试时自改进，不是持久化策略学习或模型权重更新。
-- RSI 与最终 Judge 当前使用同一 MiMo 模型，存在同源评审偏差。
 - 最终盲测 46/50 条严格达标，剩余问题主要来自知识文档缺乏解释性内容。
 - RAG 质量优化提高了调用成本，最终 Holdout 的 p95 约 68.9 秒。
 - 项目面向个人和少量邀请账户，不包含公网多租户运营能力。
@@ -406,8 +377,6 @@ uv run python scripts/evaluate_rag_quality.py \
 - 账户密码使用 PBKDF2 哈希，登录使用 HttpOnly `SameSite=Lax` 会话 Cookie。
 - 客服只执行只读白名单工具，并按账户隔离会话。
 - API Key、Cookie、Token、内部 Prompt 和完整异常堆栈不会返回给前端。
-
-如果准备公开仓库，请先确认自己没有把真实 API Key、个人数据库或评测运行数据加入 Git。
 
 ## License
 
