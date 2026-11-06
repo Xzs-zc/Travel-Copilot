@@ -14,6 +14,15 @@ class FakeEmbedder:
         return [[1.0, float(len(text) % 7), 0.25] for text in texts]
 
 
+class FakeReranker:
+    async def rerank(self, query, chunks):
+        target = "图片重复" if "重复" in query else "图片模糊"
+        return [
+            (chunk, 1.0 if chunk.section == target else 0.0)
+            for chunk in chunks
+        ]
+
+
 def write_knowledge(path, routes="troubleshooter"):
     path.write_text(
         "---\n"
@@ -109,4 +118,41 @@ async def test_quoted_section_survives_document_diversity(tmp_path):
         limit=1,
         mode="hybrid",
     )
+    assert result["documents"][0]["section"] == "图片重复"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_rerank_uses_candidate_15_and_reranks_top5(tmp_path):
+    knowledge_root = tmp_path / "knowledge"
+    knowledge_root.mkdir()
+    write_knowledge(knowledge_root / "troubleshooting.md")
+    settings = get_settings().model_copy(
+        update={
+            "siliconflow_api_key": "test-key",
+            "rag_collection": f"test_rerank_{uuid.uuid4().hex[:8]}",
+            "rag_candidate_k": 15,
+            "rag_max_per_doc": 3,
+        }
+    )
+    rag = SupportRAG(
+        settings=settings,
+        knowledge_root=knowledge_root,
+        chroma_dir=tmp_path / "chroma",
+        manifest_path=tmp_path / "manifest.json",
+        embedder=FakeEmbedder(),
+        reranker=FakeReranker(),
+        enabled=True,
+    )
+    await rag.ensure_index(force=True)
+
+    result = await rag.search(
+        "图片重复时需要怎样处理",
+        routes=["troubleshooter"],
+        limit=5,
+        mode="hybrid_rerank",
+    )
+
+    assert result["retrieval"] == "hybrid+rerank"
+    assert result["candidate_limit"] == 15
+    assert result["max_per_doc"] == 3
     assert result["documents"][0]["section"] == "图片重复"

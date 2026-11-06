@@ -41,9 +41,12 @@ class Settings(BaseSettings):
     siliconflow_api_key: str = ""
     siliconflow_base_url: str = "https://api.siliconflow.cn/v1"
     siliconflow_embedding_model: str = "BAAI/bge-m3"
+    siliconflow_rerank_model: str = "BAAI/bge-reranker-v2-m3"
     rag_enabled: bool = True
     rag_collection: str = "support_knowledge_v1"
     rag_top_k: int = 4
+    rag_candidate_k: int = 15
+    rag_max_per_doc: int = 3
     chroma_dir: Path = DATA_DIR / "chroma"
     rag_manifest_path: Path = DATA_DIR / "rag_manifest.json"
 

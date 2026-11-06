@@ -24,6 +24,10 @@ class EmbeddingError(RuntimeError):
     pass
 
 
+class RerankError(RuntimeError):
+    pass
+
+
 @dataclass(frozen=True)
 class RAGChunk:
     id: str
@@ -133,6 +137,71 @@ class SiliconFlowEmbedder:
         raise EmbeddingError(last_error or "SiliconFlow Embedding 请求失败")
 
 
+class SiliconFlowReranker:
+    """SiliconFlow rerank client for cross-encoder relevance scoring."""
+
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self.base_url = settings.siliconflow_base_url.rstrip("/")
+
+    async def rerank(
+        self,
+        query: str,
+        chunks: list[RAGChunk],
+    ) -> list[tuple[RAGChunk, float]]:
+        if not self.settings.siliconflow_api_key:
+            raise RerankError("未配置 SILICONFLOW_API_KEY")
+        if not chunks:
+            return []
+        documents = [
+            f"{chunk.title}\n{chunk.section}\n{chunk.content}"[:8000]
+            for chunk in chunks
+        ]
+        payload = {
+            "model": self.settings.siliconflow_rerank_model,
+            "query": query,
+            "documents": documents,
+            "top_n": len(documents),
+            "return_documents": False,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.settings.siliconflow_api_key}",
+            "Content-Type": "application/json",
+        }
+        last_error = ""
+        async with httpx.AsyncClient(timeout=max(20, self.settings.http_timeout_seconds * 2)) as client:
+            for attempt in range(3):
+                try:
+                    response = await client.post(
+                        f"{self.base_url}/rerank",
+                        headers=headers,
+                        json=payload,
+                    )
+                    if response.status_code in {429, 500, 502, 503, 504} and attempt < 2:
+                        await asyncio.sleep(0.6 * (attempt + 1))
+                        continue
+                    response.raise_for_status()
+                    data = response.json()
+                    rows = data.get("results") or data.get("data") or []
+                    ranked: list[tuple[RAGChunk, float]] = []
+                    for row in rows:
+                        index = int(row.get("index", -1))
+                        if index < 0 or index >= len(chunks):
+                            continue
+                        score = float(row.get("relevance_score", row.get("score", 0.0)))
+                        ranked.append((chunks[index], score))
+                    if len(ranked) != len(chunks):
+                        raise RerankError("Rerank 返回数量与候选数量不一致")
+                    ranked.sort(key=lambda item: item[1], reverse=True)
+                    return ranked
+                except Exception as exc:
+                    last_error = str(exc)[:300]
+                    if attempt < 2:
+                        await asyncio.sleep(0.6 * (attempt + 1))
+                        continue
+        raise RerankError(last_error or "SiliconFlow Rerank 请求失败")
+
+
 class SupportRAG:
     def __init__(
         self,
@@ -142,6 +211,7 @@ class SupportRAG:
         chroma_dir: Path | str | None = None,
         manifest_path: Path | str | None = None,
         embedder: SiliconFlowEmbedder | Any | None = None,
+        reranker: SiliconFlowReranker | Any | None = None,
         enabled: bool | None = None,
     ):
         self.settings = settings or get_settings()
@@ -149,6 +219,7 @@ class SupportRAG:
         self.chroma_dir = Path(chroma_dir or self.settings.chroma_dir)
         self.manifest_path = Path(manifest_path or self.settings.rag_manifest_path)
         self.embedder = embedder or SiliconFlowEmbedder(self.settings)
+        self.reranker = reranker or SiliconFlowReranker(self.settings)
         self.enabled = self.settings.rag_enabled if enabled is None else enabled
         self._chunks: list[RAGChunk] = []
         self._snapshot: tuple[tuple[str, int, int], ...] = ()
@@ -191,21 +262,23 @@ class SupportRAG:
         route_values = tuple(dict.fromkeys(route for route in routes if route))
         if not query or not route_values:
             return {"documents": [], "retrieval": "empty", "usage": {}, "error": ""}
-        if mode not in {"hybrid", "vector", "lexical"}:
+        if mode not in {"hybrid", "hybrid_rerank", "vector", "lexical"}:
             raise ValueError(f"不支持的 RAG 检索模式：{mode}")
         self.load_chunks()
-        lexical = self._lexical_search(query, route_values, limit=8) if mode in {"hybrid", "lexical"} else []
+        final_limit = limit or self.settings.rag_top_k
+        candidate_limit = max(final_limit, self.settings.rag_candidate_k)
+        lexical = self._lexical_search(query, route_values, limit=candidate_limit) if mode in {"hybrid", "hybrid_rerank", "lexical"} else []
         vector: list[tuple[RAGChunk, float]] = []
         vector_error = ""
-        if mode in {"hybrid", "vector"} and self.enabled and self.settings.siliconflow_api_key:
+        if mode in {"hybrid", "hybrid_rerank", "vector"} and self.enabled and self.settings.siliconflow_api_key:
             try:
-                vector = await self._vector_search(query, route_values, limit=8)
+                vector = await self._vector_search(query, route_values, limit=candidate_limit)
             except Exception as exc:
                 vector_error = str(exc)[:300]
                 self._last_error = vector_error
         elif mode == "vector":
             vector_error = "向量检索未启用或未配置 Embedding Key"
-        fused = self._rrf(lexical, vector, lexical_weight=1.2, vector_weight=1.0) if mode == "hybrid" else [
+        fused = self._rrf(lexical, vector, lexical_weight=1.2, vector_weight=1.0) if mode in {"hybrid", "hybrid_rerank"} else [
             (chunk, "vector", score) for chunk, score in vector
         ] if mode == "vector" else [
             (chunk, "lexical", score) for chunk, score in lexical
@@ -220,16 +293,43 @@ class SupportRAG:
                 if re.sub(r"\s+", "", item[0].section).lower() in quoted_sections
                 else 1
             )
-        if mode == "hybrid":
-            fused = self._diversify(fused, max_per_doc=2)
-        final_limit = limit or self.settings.rag_top_k
+        rerank_error = ""
+        if mode in {"hybrid", "hybrid_rerank"}:
+            coarse = fused[:candidate_limit]
+            if mode == "hybrid_rerank":
+                try:
+                    reranked = await self.reranker.rerank(
+                        query,
+                        [chunk for chunk, _, _ in coarse],
+                    )
+                    fused = [(chunk, "reranked", score) for chunk, score in reranked]
+                except Exception as exc:
+                    rerank_error = str(exc)[:300]
+                    fused = coarse
+            else:
+                fused = coarse
+            fused = self._diversify(fused, max_per_doc=self.settings.rag_max_per_doc)
         documents = [chunk.as_result(retrieval, score) for chunk, retrieval, score in fused[:final_limit]]
-        retrieval_mode = "hybrid" if vector and lexical else "vector" if vector else "lexical" if lexical else "none"
+        retrieval_mode = (
+            "hybrid+rerank"
+            if mode == "hybrid_rerank" and not rerank_error
+            else "hybrid"
+            if vector and lexical
+            else "vector"
+            if vector
+            else "lexical"
+            if lexical
+            else "none"
+        )
+        errors = [error for error in (vector_error, rerank_error) if error]
         return {
             "documents": documents,
             "retrieval": retrieval_mode,
             "usage": dict(getattr(self.embedder, "last_usage", {}) or {}),
-            "error": vector_error,
+            "error": "; ".join(errors),
+            "candidate_limit": candidate_limit,
+            "max_per_doc": self.settings.rag_max_per_doc,
+            "rerank_model": self.settings.siliconflow_rerank_model if mode == "hybrid_rerank" else "",
         }
 
     async def ensure_index(self, force: bool = False) -> bool:
