@@ -1,0 +1,18 @@
+id: answer_relevance
+version: "1.0"
+definition: 回答是否直接、完整地解决用户问题，不包含无关信息，也不遗漏问题中的关键约束。
+scale:
+  min: 1
+  max: 5
+  labels:
+    1: 答非所问
+    2: 只覆盖少量问题意图
+    3: 基本相关但遗漏关键点
+    4: 直接回答问题，存在轻微冗余
+    5: 直接、完整且简洁地满足问题
+positive_example: 用户问图片为何模糊，回答按压缩、分辨率与缓存三类原因解释。
+negative_example: 用户问图片问题，回答开始介绍酒店规划。
+output_schema:
+  score: integer
+  missing_key_points: array
+  reason: string

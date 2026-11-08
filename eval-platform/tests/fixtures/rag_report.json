@@ -1,0 +1,58 @@
+{
+  "run_id": "fixture-rag-run",
+  "started_at": "2026-11-07T10:00:00+00:00",
+  "finished_at": "2026-11-07T10:00:01+00:00",
+  "embedding_model": "fixture-embedding",
+  "metrics": {
+    "hybrid": {
+      "overall": {
+        "recall_at_5": 75.0
+      },
+      "cases": [
+        {
+          "id": "RAG-T-001",
+          "difficulty": "medium",
+          "gold": ["doc-a/section-a"],
+          "retrieved": ["doc-a/section-a", "doc-b/section-b"]
+        },
+        {
+          "id": "RAG-T-002",
+          "difficulty": "hard",
+          "gold": ["doc-a/section-a", "doc-c/section-c"],
+          "retrieved": ["doc-b/section-b", "doc-a/section-a"]
+        }
+      ]
+    }
+  },
+  "traces": [
+    {
+      "id": "RAG-T-001",
+      "difficulty": "medium",
+      "message": "first question",
+      "routes": ["site_guide"],
+      "gold_sections": [
+        {"doc_id": "doc-a", "section": "section-a"}
+      ],
+      "hybrid": {
+        "retrieval": "hybrid",
+        "error": "",
+        "sections": ["doc-a/section-a", "doc-b/section-b"]
+      }
+    },
+    {
+      "id": "RAG-T-002",
+      "difficulty": "hard",
+      "message": "second question",
+      "routes": ["troubleshooter"],
+      "gold_sections": [
+        {"doc_id": "doc-a", "section": "section-a"},
+        {"doc_id": "doc-c", "section": "section-c"}
+      ],
+      "hybrid": {
+        "retrieval": "hybrid",
+        "error": "",
+        "sections": ["doc-b/section-b", "doc-a/section-a"]
+      }
+    }
+  ]
+}

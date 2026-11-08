@@ -1,0 +1,57 @@
+services:
+  eval-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: travel_eval
+      POSTGRES_USER: travel
+      POSTGRES_PASSWORD: travel
+    volumes:
+      - eval-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U travel -d travel_eval"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  eval-platform:
+    build:
+      context: ..
+      dockerfile: eval-platform/Dockerfile
+      target: runtime
+    environment:
+      EVAL_PLATFORM_DATABASE_URL: postgresql://travel:travel@eval-postgres:5432/travel_eval
+      EVAL_PLATFORM_SEED_RUNS: "1"
+      LANGFUSE_ENABLED: "false"
+      EVAL_LANGFUSE_EXPORT: "0"
+    env_file:
+      - path: ../.env
+        required: false
+    ports:
+      - "8770:8770"
+    volumes:
+      - ../data/evaluations:/app/data/evaluations:ro
+    depends_on:
+      eval-postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  eval-platform-test:
+    profiles: ["test"]
+    build:
+      context: ..
+      dockerfile: eval-platform/Dockerfile
+      target: test
+    environment:
+      EVAL_PLATFORM_DATABASE_URL: postgresql://travel:travel@eval-postgres:5432/travel_eval
+      LANGFUSE_ENABLED: "false"
+      EVAL_LANGFUSE_EXPORT: "0"
+    volumes:
+      - ../data/evaluations:/app/data/evaluations:ro
+    depends_on:
+      eval-postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  eval-postgres-data:

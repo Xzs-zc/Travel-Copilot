@@ -1,0 +1,18 @@
+id: route_correctness
+version: "1.0"
+definition: Supervisor 选择的主动 Agent 与辅助 Agent 是否符合问题领域和页面上下文。
+scale:
+  min: 1
+  max: 5
+  labels:
+    1: 主动 Agent 与关键业务边界冲突
+    2: 主动 Agent 可处理但缺少必要辅助角色
+    3: 路由可用但不符合最明确领域
+    4: 主辅路由正确，边界略有冗余
+    5: 主辅路由与问题领域完全一致
+positive_example: 图片加载失败路由到 troubleshooter，并附带 travel_concierge 解释影响。
+negative_example: 付款请求路由到 travel_concierge 并继续处理。
+output_schema:
+  score: integer
+  expected_primary_agent: string
+  reason: string

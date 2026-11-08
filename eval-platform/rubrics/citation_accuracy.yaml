@@ -1,0 +1,19 @@
+id: citation_accuracy
+version: "1.0"
+definition: 引用是否真实存在、指向正确片段，并足以支持其所在句子的关键事实。
+scale:
+  min: 1
+  max: 5
+  labels:
+    1: 引用伪造或系统性指向错误片段
+    2: 多处关键引用错误
+    3: 引用基本存在但支持关系不稳定
+    4: 少量引用不够精确
+    5: 所有关键事实都有准确且充分的支持引用
+positive_example: 每个事实句都引用实际检索片段，引用内容与陈述一致。
+negative_example: 回答引用不存在的片段 ID，或引用片段与陈述无关。
+output_schema:
+  score: integer
+  invalid_or_unsupported_citations: array
+  uncited_claims: array
+  reason: string

@@ -1,0 +1,8 @@
+{
+  "name": "Online Support E2E v1",
+  "version": "1.0.0",
+  "description": "20 条真实客服 E2E，独立于离线 v2 数据集。",
+  "case_count": 20,
+  "source": "evals/support/support_blind_v5.jsonl",
+  "source_sha256": "3b46fd92b167b17b4c91211028f760732516ac047fe3450aa4b073749bdea2c9"
+}

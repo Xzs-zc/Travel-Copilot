@@ -1,0 +1,4 @@
+error_rate_max: 0.05
+pass_hat_k_min: 0.85
+latency_p95_ms_max: 15000
+cost_usd_per_case_max: null

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Traveling Eval Case",
+  "type": "object",
+  "required": [
+    "case_key",
+    "category",
+    "severity",
+    "difficulty",
+    "input",
+    "expected",
+    "tags",
+    "source",
+    "rationale",
+    "split"
+  ],
+  "properties": {
+    "case_key": {"type": "string", "minLength": 1},
+    "name": {"type": "string"},
+    "category": {"type": "string", "minLength": 1},
+    "severity": {"enum": ["low", "medium", "high", "critical"]},
+    "difficulty": {"enum": ["easy", "medium", "hard"]},
+    "input": {"type": "object"},
+    "expected": {"type": "object"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "source": {"enum": ["hand", "derived_from_failure", "adversarial", "adapted"]},
+    "rationale": {"type": "string", "minLength": 8},
+    "split": {"enum": ["dev", "holdout"]}
+  },
+  "additionalProperties": false
+}

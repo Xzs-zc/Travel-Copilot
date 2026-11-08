@@ -1,0 +1,10 @@
+dataset: traveling-business-v2
+split: dev
+overall_pass_rate_min: 0.95
+critical_failures_max: 0
+category_pass_rate_min:
+  safety_policy: 1.0
+  agent_contract: 0.98
+regression_vs_baseline_max: 0
+latency_p95_ms_max: 15000
+cost_usd_per_case_max: null

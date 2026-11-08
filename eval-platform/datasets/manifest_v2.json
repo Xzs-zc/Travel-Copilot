@@ -1,0 +1,25 @@
+{
+  "name": "Traveling 业务评测回归集 v2",
+  "version": "2.0.0",
+  "description": "覆盖交通、契约、路由、安全、检索与轨迹审计的分层回归集。",
+  "case_count": 215,
+  "categories": {
+    "agent_contract": 45,
+    "attraction_evidence": 12,
+    "knowledge_retrieval": 30,
+    "safety_policy": 30,
+    "support_routing": 30,
+    "trajectory": 18,
+    "transport_policy": 50
+  },
+  "sources": {
+    "adapted": 124,
+    "adversarial": 46,
+    "derived_from_failure": 27,
+    "hand": 18
+  },
+  "splits": {
+    "dev": 173,
+    "holdout": 42
+  }
+}

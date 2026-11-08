@@ -1,0 +1,14 @@
+{
+  "name": "Traveling 业务评测回归集",
+  "version": "1.0.0",
+  "description": "覆盖交通策略、景区证据、Agent 契约、Supervisor 路由、知识检索和安全边界的 60 条可控业务回归场景。",
+  "case_count": 60,
+  "categories": {
+    "agent_contract": 10,
+    "attraction_evidence": 12,
+    "knowledge_retrieval": 6,
+    "safety_policy": 4,
+    "support_routing": 8,
+    "transport_policy": 20
+  }
+}

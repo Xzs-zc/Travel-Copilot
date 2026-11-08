@@ -1,0 +1,18 @@
+id: faithfulness
+version: "1.0"
+definition: 回答中的事实陈述是否由给定检索片段支持；不受外部知识或语言流畅度影响。
+scale:
+  min: 1
+  max: 5
+  labels:
+    1: 关键结论无依据或与证据冲突
+    2: 多数关键结论缺少直接证据
+    3: 部分结论有证据，但仍有关键缺口
+    4: 主要结论均有证据，存在少量泛化
+    5: 所有事实结论均由检索片段直接支持
+positive_example: 回答只复述片段中的开放时间，并保留对应引用。
+negative_example: 片段未提票价，回答却给出了具体票价。
+output_schema:
+  score: integer
+  unsupported_claims: array
+  reason: string
