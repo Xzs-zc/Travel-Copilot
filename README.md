@@ -15,6 +15,8 @@
 
 ## 快速预览
 
+![Travel Copilot 山河行迹中国地图首页](docs/assets/traveling-home.jpg)
+
 ```text
 中国地图
   → 选择省份
